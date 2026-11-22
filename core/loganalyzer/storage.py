@@ -3,7 +3,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from .detectors import detect_batch
 from .models import Event
+from .rules import Rules
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -49,9 +51,20 @@ def read_checkpoint(db: sqlite3.Connection, file: str) -> Checkpoint | None:
 
 
 def write_batch(
-    db: sqlite3.Connection, events: Sequence[Event], checkpoint: Checkpoint
+    db: sqlite3.Connection,
+    events: Sequence[Event],
+    checkpoint: Checkpoint,
+    rules: Rules | None = None,
+    previous: Checkpoint | None = None,
 ) -> None:
     with db:
+        if rules is not None:
+            db.execute("BEGIN IMMEDIATE")
+            if read_checkpoint(db, checkpoint.file) != previous:
+                raise ValueError(
+                    "Another ingest changed this checkpoint. Run ingest again."
+                )
+            detect_batch(db, events, rules)
         db.executemany(
             "INSERT INTO events(ts, source, ip, user, event_type, raw) VALUES (?, ?, ?, ?, ?, ?)",
             [(e.ts, e.source, str(e.ip), e.user, e.event_type, e.raw) for e in events],

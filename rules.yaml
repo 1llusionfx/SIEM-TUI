@@ -1,0 +1,13 @@
+brute_force:
+  window_seconds: 60
+  severity: high
+  threshold: 6
+scan:
+  window_seconds: 60
+  severity: medium
+  missing_threshold: 8
+  paths_threshold: 10
+credential_stuffing:
+  window_seconds: 60
+  severity: high
+  threshold: 5

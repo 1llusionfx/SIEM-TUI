@@ -8,6 +8,7 @@ from pathlib import Path
 from .models import Event
 from .parsers.auth import parse_auth
 from .parsers.nginx import parse_nginx
+from .rules import Rules
 from .storage import Checkpoint, read_checkpoint, write_batch
 
 
@@ -44,7 +45,9 @@ class Totals:
     ignored: int = 0
 
 
-def ingest_file(db: sqlite3.Connection, path: Path, format_name: str) -> Totals:
+def ingest_file(
+    db: sqlite3.Connection, path: Path, format_name: str, rules: Rules
+) -> Totals:
     file = str(path.resolve())
     totals = Totals()
     with path.open("rb") as stream:
@@ -79,9 +82,13 @@ def ingest_file(db: sqlite3.Connection, path: Path, format_name: str) -> Totals:
                     totals.events += 1
             pending += 1
             if pending == 500:
-                write_batch(db, events, Checkpoint(file, inode, stream.tell()))
+                next_checkpoint = Checkpoint(file, inode, stream.tell())
+                write_batch(db, events, next_checkpoint, rules, checkpoint)
+                checkpoint = next_checkpoint
                 events.clear()
                 pending = 0
         if pending:
-            write_batch(db, events, Checkpoint(file, inode, stream.tell()))
+            write_batch(
+                db, events, Checkpoint(file, inode, stream.tell()), rules, checkpoint
+            )
     return totals

@@ -7,6 +7,7 @@ from typing import Annotated
 import typer
 
 from .ingest import ingest_file
+from .rules import load_rules
 from .storage import open_database
 
 app = typer.Typer(add_completion=False)
@@ -23,6 +24,7 @@ def ingest(
     file: Path,
     db: Database = Path("loganalyzer.sqlite3"),
     format_: Annotated[LogFormat | None, typer.Option("--format")] = None,
+    rules: Annotated[Path, typer.Option("--rules")] = Path("rules.yaml"),
 ) -> None:
     """Read new lines from an SSH or nginx log."""
     if format_ is None:
@@ -35,8 +37,9 @@ def ingest(
                 "Use --format auth or --format nginx for this filename."
             )
     try:
+        config = load_rules(rules)
         with closing(open_database(db)) as connection:
-            result = ingest_file(connection, file, format_.value)
+            result = ingest_file(connection, file, format_.value, config)
     except (OSError, sqlite3.Error, ValueError) as error:
         raise typer.BadParameter(str(error)) from error
     typer.echo(

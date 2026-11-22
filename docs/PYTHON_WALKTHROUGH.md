@@ -58,4 +58,21 @@ Run `uv run pytest tests/test_auth.py -v` to inspect the parser cases or `uv run
 
 **Why store a byte offset?** A file reader can seek to a byte position after a restart. The number of decoded characters can differ from the number of bytes.
 
-**Where are alerts created?** This milestone creates the alerts table. Detection and deduplication arrive in M3, followed by the reader that handles rotation in M4.
+**Where are alerts created?** `storage.write_batch` obtains the SQLite writer lock with `BEGIN IMMEDIATE`. It checks that another reader has not advanced the same file checkpoint. Then it runs detection, inserts events, saves the offset and commits. A checkpoint failure rolls back alert updates as well.
+
+## Detection windows and deduplication
+
+`rules.py` loads the YAML with a safe loader. Pydantic rejects unknown fields, nonpositive thresholds and unsupported severity values before ingestion opens the database.
+
+`detectors.py` keeps a deque for each rule and IP touched by the current batch. On first use, it reads qualifying events from the indexed time range in SQLite. nginx observations are parsed from their raw lines to recover paths and status codes. This costs some reads at batch boundaries but makes a fresh CLI process continue an attack without a separate state file.
+
+```python
+while window and window[0].ts < cutoff:
+    window.popleft()
+```
+
+The window includes both endpoints. A late observation inside the current window is inserted in time order. An older observation is stored for inspection and contributes no new alert. The window clock is the latest qualifying event time for that IP and rule.
+
+Each event is evaluated twice, once after expiration and once after insertion. If the surviving observations already meet the threshold, the detector updates the alert ending at the previous window time. Otherwise a new crossing opens a new alert. This also works after restarting the CLI. A fixed cooldown would merge independent bursts occurring close together. Alert count records the initial window size plus subsequent observations while the alert continues. Details describe the latest qualifying window.
+
+Run `uv run pytest tests/test_detectors.py -v` for the window boundary, both scan conditions, database rollback and episodes split across batches.

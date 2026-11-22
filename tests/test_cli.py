@@ -18,4 +18,4 @@ def test_generated_logs_and_resume(tmp_path: Path) -> None:
         assert first.exit_code == 0, first.output
         assert "Events 60 | malformed 1 | ignored 0" in first.output
         assert "Events 0 | malformed 0" in runner.invoke(app, args).output
-    assert "Events 120 | alerts 0" in runner.invoke(app, ["stats", "--db", db]).output
+    assert "Events 120 | alerts 4" in runner.invoke(app, ["stats", "--db", db]).output
