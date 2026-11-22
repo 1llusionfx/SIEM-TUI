@@ -1,0 +1,8 @@
+services:
+  demo:
+    build: .
+    init: true
+    tty: true
+    stdin_open: true
+    tmpfs:
+      - /demo

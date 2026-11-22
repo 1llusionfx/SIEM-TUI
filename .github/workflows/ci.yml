@@ -1,0 +1,61 @@
+name: Checks
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+      - run: uv sync --locked --python 3.12
+      - run: uv run ruff check .
+      - run: uv run ruff format --check core tests scripts
+      - run: uv run mypy --strict
+      - run: uv run pytest
+
+  tui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tui/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build --detach
+      - name: Wait for both generated files to finish replaying
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker compose exec -T demo loganalyzer stats --db /demo/logs.sqlite3 | grep -Fq 'Events 120 | alerts 4'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose exec -T demo cat /demo/replay.log
+          exit 1
+      - name: Pause and quit through the container terminal
+        run: |
+          (sleep 2; printf p; sleep 1; printf q; sleep 1) |
+            timeout 15 script -qec 'docker compose attach demo' /tmp/dashboard-session
+          grep -Fq Paused /tmp/dashboard-session
+      - if: always()
+        run: docker compose down

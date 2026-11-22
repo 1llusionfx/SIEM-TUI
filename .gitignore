@@ -1,4 +1,5 @@
 .venv/
+.benchmarks/
 samples/
 node_modules/
 tui/dist/

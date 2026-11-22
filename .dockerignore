@@ -1,0 +1,14 @@
+.git
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.benchmarks
+docs
+samples
+tests
+tui/dist
+tui/node_modules
+tui/tests
+**/*.sqlite3*
+**/__pycache__/

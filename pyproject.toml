@@ -16,7 +16,7 @@ build-backend = "uv_build"
 module-root = "core"
 
 [dependency-groups]
-dev = ["pytest", "ruff", "mypy", "types-PyYAML"]
+dev = ["pytest", "pytest-benchmark", "ruff", "mypy", "types-PyYAML"]
 
 [tool.mypy]
 strict = true

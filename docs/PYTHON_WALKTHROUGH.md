@@ -2,6 +2,8 @@
 
 ## From SSH message to database row
 
+The three input commands call `ingest.parse_record` to decode bytes and choose the source parser. Valid events flow into `storage.write_batch`, where the detector compares the incoming observations with recent history. A threshold crossing adds an alert in the same transaction as its triggering event. Once the commit succeeds the dashboard can read both rows.
+
 In `parsers/auth.py`, `parse_auth` splits the syslog header from the message. It recognizes three SSH messages. A failed password for an invalid user still counts as a failed password. A separate “Invalid user” message gets its own event type. Unrelated messages with a valid header return `None`. A broken header, impossible date, incomplete login message or invalid address raises `ValueError`.
 
 In `models.py`, the Pydantic event carries the timestamp, source, IP address, username, type and original text. Address validation handles IPv4 and IPv6. The parser removes the line ending and preserves the rest for inspection.
@@ -97,3 +99,9 @@ Use `uv run pytest tests/test_streams.py -v` to exercise rotation during downtim
 The Ink dashboard has no Python imports or direct connection to the ingestion process. Each second, `tui/src/db.ts` opens the database read-only and reads all three panes in one short SQLite transaction. The panes therefore show the same commit even if ingestion is writing the next batch. Closing the connection after the read releases the WAL snapshot and lets the next poll recover after a database replacement. Reopening adds a small cost per poll.
 
 The rate uses the difference between successive committed event counts divided by elapsed wall time. Loading an archive can therefore show activity even though its event timestamps are years old. To debug a difference between the CLI and the TUI, run `loganalyzer stats --db PATH` and start the TUI against the same absolute path. Check the active filter and pause state.
+
+## Reproducing the benchmark and demo
+
+`tests/benchmarks/test_ingest.py` uses the same file ingestion function as the CLI. It prepares a generated nginx file, runs five imports into separate databases and checks the returned event count. Divide 5,000 by the median reported time in seconds to get lines per second. Run `uv run pytest tests/benchmarks --benchmark-only` on the target machine before comparing changes.
+
+In Docker, `scripts/demo.sh` generates both log formats under `/demo` and starts the two replay runs in sequence in the background. The foreground Node process owns the terminal. Inspect playback with `docker compose exec demo cat /demo/replay.log` and counts with `docker compose exec demo loganalyzer stats --db /demo/logs.sqlite3`.
