@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 export interface Entry {
   key: string;
   label: string;
+  cells: string[];
   detail: string;
   severity?: string;
 }
@@ -45,10 +46,13 @@ export function readSnapshot(path: string, filter: string): Snapshot {
         total: total.n,
         panes: [
           ips.map(row => ({key: row.ip, label: `${row.ip}  ${row.n}`,
+            cells: [row.ip, String(row.n)],
             detail: `${row.ip} · ${row.n} matching events`})),
           events.map(row => ({key: String(row.id), label: `${time(row.ts)} ${row.ip} ${row.event_type}`,
+            cells: [time(row.ts), row.ip, row.event_type],
             detail: row.raw})),
           alerts.map(row => ({key: String(row.id), severity: row.severity,
+            cells: [row.severity, row.rule, row.ip, String(row.count)],
             label: `${row.severity} ${row.rule} ${row.ip} ×${row.count}`,
             detail: `${row.rule} · ${row.severity} · ${row.ip}\n${row.details}\n` +
               `${row.count} observations · ${new Date(row.first_seen * 1000).toISOString()} to ` +

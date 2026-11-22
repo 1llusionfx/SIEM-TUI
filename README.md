@@ -81,7 +81,7 @@ npm start
 
 The default database is `../loganalyzer.sqlite3` relative to the TUI working directory. Use `npm start -- PATH` for another database. Running the dashboard first shows “waiting for daemon…” until ingestion creates the schema.
 
-The header shows committed events per second over the last 20 samples. Top IPs ranks matching events by address. Live events are ordered by insertion, and alerts by their latest observation. Each pane holds up to 100 rows. Narrow or short terminals show the focused pane.
+The header shows the polling state, committed event total and arrival rate over the last 20 samples. On wide terminals, Top IPs and Live events sit side by side above the Alerts table. Each pane shows its visible row range and holds up to 100 results. Tab changes focus and remembers the selected row in each pane. Narrow or short terminals show the focused pane. Enter opens a scrollable detail with the original log line or alert evidence.
 
 | Key | Action |
 | --- | --- |

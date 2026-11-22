@@ -73,6 +73,8 @@ test('selection, details, pane focus, pause, filtering, resize and quit', async 
     await delay(80);
     assert.match(ui.lastFrame()!, /› Live events/);
     await key('\x1b[B');
+    await key('\t');
+    await key('\x1b[Z');
     await key('\r');
     assert.match(ui.lastFrame()!, /first raw line/);
     await key('\r');
