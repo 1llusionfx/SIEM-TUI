@@ -3,7 +3,10 @@ name = "loganalyzer"
 version = "0.1.0"
 description = "Parse security logs and store events in SQLite"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pydantic>=2,<3"]
+dependencies = ["pydantic>=2,<3", "typer>=0.15,<1"]
+
+[project.scripts]
+loganalyzer = "loganalyzer.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.13,<0.14"]
@@ -17,7 +20,7 @@ dev = ["pytest", "ruff", "mypy"]
 
 [tool.mypy]
 strict = true
-files = ["core", "tests"]
+files = ["core", "tests", "scripts"]
 
 [tool.ruff]
 src = ["core"]

@@ -1,9 +1,14 @@
+import os
+import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 
 from .models import Event
 from .parsers.auth import parse_auth
+from .parsers.nginx import parse_nginx
+from .storage import Checkpoint, read_checkpoint, write_batch
 
 
 @dataclass
@@ -30,3 +35,53 @@ def parse_auth_batch(lines: Iterable[str], reference: datetime) -> ParsedBatch:
             batch.events.append(event)
             batch.reference = datetime.fromtimestamp(event.ts, reference.tzinfo)
     return batch
+
+
+@dataclass
+class Totals:
+    events: int = 0
+    malformed: int = 0
+    ignored: int = 0
+
+
+def ingest_file(db: sqlite3.Connection, path: Path, format_name: str) -> Totals:
+    file = str(path.resolve())
+    totals = Totals()
+    with path.open("rb") as stream:
+        stat = os.fstat(stream.fileno())
+        inode = f"{stat.st_dev}:{stat.st_ino}"
+        checkpoint = read_checkpoint(db, file)
+        if (
+            checkpoint
+            and checkpoint.inode == inode
+            and checkpoint.offset <= stat.st_size
+        ):
+            stream.seek(checkpoint.offset)
+        reference = datetime.fromtimestamp(stat.st_mtime, UTC)
+        events: list[Event] = []
+        pending = 0
+        for raw in stream:
+            try:
+                line = raw.decode("utf-8")
+                event = (
+                    parse_auth(line, reference)
+                    if format_name == "auth"
+                    else parse_nginx(line)
+                )
+            except ValueError:
+                totals.malformed += 1
+            else:
+                if event is None:
+                    totals.ignored += 1
+                else:
+                    events.append(event)
+                    reference = datetime.fromtimestamp(event.ts, UTC)
+                    totals.events += 1
+            pending += 1
+            if pending == 500:
+                write_batch(db, events, Checkpoint(file, inode, stream.tell()))
+                events.clear()
+                pending = 0
+        if pending:
+            write_batch(db, events, Checkpoint(file, inode, stream.tell()))
+    return totals

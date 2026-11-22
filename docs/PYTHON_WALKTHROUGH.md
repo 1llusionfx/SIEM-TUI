@@ -50,6 +50,10 @@ Run `uv run pytest tests/test_auth.py -v` to inspect the parser cases or `uv run
 
 ## Questions you might get asked
 
+**How does file ingestion work?** The Typer command in `cli.py` picks a parser from the filename or the explicit format. `ingest_file` opens a completed file in binary mode so each checkpoint is a byte offset. It decodes UTF-8 one line at a time, counts decoding and parsing errors, and commits after 500 input lines or at EOF. The final line of a completed file can omit its newline.
+
+**What is specific to nginx?** `parsers/nginx.py` reads combined-format HTTP request lines and their numeric timezone offset. The normalized event carries the path and status for detection. Removing the query string keeps variations of one resource together. A request that lacks a parseable HTTP request line counts as malformed. Use `uv run pytest tests/test_nginx.py tests/test_cli.py -v` to exercise nginx parsing and the generated-file workflow.
+
 **Why keep the raw line?** It preserves the evidence behind a normalized event. It also makes a parser error easier to diagnose.
 
 **Why store a byte offset?** A file reader can seek to a byte position after a restart. The number of decoded characters can differ from the number of bytes.

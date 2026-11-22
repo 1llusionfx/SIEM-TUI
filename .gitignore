@@ -1,4 +1,7 @@
 .venv/
+samples/
+node_modules/
+tui/dist/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
