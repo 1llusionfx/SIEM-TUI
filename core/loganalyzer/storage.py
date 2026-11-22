@@ -53,14 +53,14 @@ def read_checkpoint(db: sqlite3.Connection, file: str) -> Checkpoint | None:
 def write_batch(
     db: sqlite3.Connection,
     events: Sequence[Event],
-    checkpoint: Checkpoint,
+    checkpoint: Checkpoint | None,
     rules: Rules | None = None,
     previous: Checkpoint | None = None,
 ) -> None:
     with db:
         if rules is not None:
             db.execute("BEGIN IMMEDIATE")
-            if read_checkpoint(db, checkpoint.file) != previous:
+            if checkpoint and read_checkpoint(db, checkpoint.file) != previous:
                 raise ValueError(
                     "Another ingest changed this checkpoint. Run ingest again."
                 )
@@ -69,6 +69,8 @@ def write_batch(
             "INSERT INTO events(ts, source, ip, user, event_type, raw) VALUES (?, ?, ?, ?, ?, ?)",
             [(e.ts, e.source, str(e.ip), e.user, e.event_type, e.raw) for e in events],
         )
+        if checkpoint is None:
+            return
         db.execute(
             """INSERT INTO ingest_state(file, inode, offset) VALUES (?, ?, ?)
                ON CONFLICT(file) DO UPDATE SET inode = excluded.inode, offset = excluded.offset""",

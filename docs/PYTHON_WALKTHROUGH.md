@@ -77,6 +77,21 @@ Each event is evaluated twice, once after expiration and once after insertion. I
 
 Run `uv run pytest tests/test_detectors.py -v` for the window boundary, both scan conditions, database rollback and episodes split across batches.
 
+## Following a file and playing an archive
+
+In `tail.py`, each poll reads up to 500 lines per file. Closing the file between polls allows renames on Windows. A reader compares the saved device and inode to the open file and checks the size before seeking.
+
+```python
+if previous and inode == previous.inode and previous.offset <= stat.st_size:
+    stream.seek(previous.offset)
+```
+
+A shorter file starts at byte zero. After a rename the reader looks for the old inode under the original filename plus a suffix, drains unread complete lines, then switches to the replacement. A partial current line stays behind the checkpoint until a newline arrives. A partial final line on a rotated sibling counts as malformed. A missing file can appear on a later poll.
+
+The replay command uses the same parser and database writer. Each event becomes visible at its playback deadline. Computing deadlines from the first timestamp avoids accumulating time spent writing earlier events. Equal or out-of-order timestamps can be played immediately. Replay leaves file checkpoints alone so a demonstration cannot move a live watcher forward.
+
+Use `uv run pytest tests/test_streams.py -v` to exercise rotation during downtime, truncation and playback with a fake clock. Run `loganalyzer watch` and `loganalyzer stats` in separate terminals to inspect newly committed rows.
+
 ## Reading committed results
 
 The Ink dashboard has no Python imports or direct connection to the ingestion process. Each second, `tui/src/db.ts` opens the database read-only and reads all three panes in one short SQLite transaction. The panes therefore show the same commit even if ingestion is writing the next batch. Closing the connection after the read releases the WAL snapshot and lets the next poll recover after a database replacement. Reopening adds a small cost per poll.

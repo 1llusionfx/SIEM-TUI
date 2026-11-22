@@ -15,6 +15,15 @@ uv run loganalyzer stats
 
 The generator replaces both files in the chosen directory. Each contains 60 events and one malformed line. Repeating an ingest resumes at the saved byte offset. Pass `--format auth` or `--format nginx` for a custom filename, and `--db PATH` to select a database. SSH times are interpreted as UTC, using the file modification time as the initial year reference. nginx timestamps include their own UTC offsets.
 
+## Watch or replay a file
+
+```sh
+uv run loganalyzer watch samples/auth.log samples/access.log
+uv run loganalyzer replay samples/auth.log --speed 10 --db demo.sqlite3
+```
+
+Watch checks each file every quarter second when idle. It waits for a newline before committing a record and prints session counts on Ctrl+C. Replay starts at the beginning on every invocation and appends events to the selected database. Use a fresh database for an independent demo. Playback preserves the stored timestamps and divides the gaps by the speed.
+
 ## Configure detection
 
 Ingest reads `rules.yaml` from the working directory. Use `--rules PATH` to select another file. Each rule has a positive window length in seconds and a severity of `low`, `medium` or `high`.

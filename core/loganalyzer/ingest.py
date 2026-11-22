@@ -45,6 +45,24 @@ class Totals:
     ignored: int = 0
 
 
+def parse_record(
+    raw: bytes, format_name: str, reference: datetime, totals: Totals
+) -> Event | None:
+    try:
+        line = raw.decode("utf-8")
+        event = (
+            parse_auth(line, reference) if format_name == "auth" else parse_nginx(line)
+        )
+    except ValueError:
+        totals.malformed += 1
+        return None
+    if event is None:
+        totals.ignored += 1
+    else:
+        totals.events += 1
+    return event
+
+
 def ingest_file(
     db: sqlite3.Connection, path: Path, format_name: str, rules: Rules
 ) -> Totals:
@@ -64,22 +82,10 @@ def ingest_file(
         events: list[Event] = []
         pending = 0
         for raw in stream:
-            try:
-                line = raw.decode("utf-8")
-                event = (
-                    parse_auth(line, reference)
-                    if format_name == "auth"
-                    else parse_nginx(line)
-                )
-            except ValueError:
-                totals.malformed += 1
-            else:
-                if event is None:
-                    totals.ignored += 1
-                else:
-                    events.append(event)
-                    reference = datetime.fromtimestamp(event.ts, UTC)
-                    totals.events += 1
+            event = parse_record(raw, format_name, reference, totals)
+            if event is not None:
+                events.append(event)
+                reference = datetime.fromtimestamp(event.ts, UTC)
             pending += 1
             if pending == 500:
                 next_checkpoint = Checkpoint(file, inode, stream.tell())
