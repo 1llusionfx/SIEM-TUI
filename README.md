@@ -27,6 +27,33 @@ Ingest reads `rules.yaml` from the working directory. Use `--rules PATH` to sele
 
 The generated sample produces four alert rows with the default rules. The sequence with eight usernames also qualifies as brute force. A rule change applies on subsequent ingestion. Existing alert rows retain their history.
 
+## Open the dashboard
+
+After ingesting the generated files, run these commands from the repository root with Node 20+ and npm installed.
+
+```sh
+cd tui
+npm ci
+npm run build
+npm start
+```
+
+The default database is `../loganalyzer.sqlite3` relative to the TUI working directory. Use `npm start -- PATH` for another database. Running the dashboard first shows “waiting for daemon…” until ingestion creates the schema.
+
+The header shows committed events per second over the last 20 samples. Top IPs ranks matching events by address. Live events are ordered by insertion, and alerts by their latest observation. Each pane holds up to 100 rows. Narrow or short terminals show the focused pane.
+
+| Key | Action |
+| --- | --- |
+| Tab / Shift+Tab | Change pane |
+| ↑ / ↓ | Select a row or scroll a detail |
+| Enter | Inspect a row, including the raw log in Live events |
+| Esc / Enter | Close detail |
+| / | Edit a literal, case-insensitive filter. Enter applies it and resumes polling. Esc cancels. |
+| p | Pause or resume polling |
+| q | Quit |
+
+Severity labels remain visible with `NO_COLOR=1`. From `tui/`, run `npm test`, `npm run lint` and `npm run typecheck` to check the terminal UI.
+
 ## Run the core tests
 
 From the repository root, with Python 3.12 and uv installed, run

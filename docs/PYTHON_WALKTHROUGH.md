@@ -76,3 +76,9 @@ The window includes both endpoints. A late observation inside the current window
 Each event is evaluated twice, once after expiration and once after insertion. If the surviving observations already meet the threshold, the detector updates the alert ending at the previous window time. Otherwise a new crossing opens a new alert. This also works after restarting the CLI. A fixed cooldown would merge independent bursts occurring close together. Alert count records the initial window size plus subsequent observations while the alert continues. Details describe the latest qualifying window.
 
 Run `uv run pytest tests/test_detectors.py -v` for the window boundary, both scan conditions, database rollback and episodes split across batches.
+
+## Reading committed results
+
+The Ink dashboard has no Python imports or direct connection to the ingestion process. Each second, `tui/src/db.ts` opens the database read-only and reads all three panes in one short SQLite transaction. The panes therefore show the same commit even if ingestion is writing the next batch. Closing the connection after the read releases the WAL snapshot and lets the next poll recover after a database replacement. Reopening adds a small cost per poll.
+
+The rate uses the difference between successive committed event counts divided by elapsed wall time. Loading an archive can therefore show activity even though its event timestamps are years old. To debug a difference between the CLI and the TUI, run `loganalyzer stats --db PATH` and start the TUI against the same absolute path. Check the active filter and pause state.
