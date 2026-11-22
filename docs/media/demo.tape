@@ -1,10 +1,11 @@
 Output docs/media/dashboard.gif
-Set Width 1000
-Set Height 580
+Set Width 1100
+Set Height 640
 Set FontSize 16
 Set Framerate 8
 Set TypingSpeed 10ms
 Hide
+Env FORCE_COLOR "3"
 Type "node tui/dist/index.js samples/dashboard.sqlite3"
 Enter
 Wait+Screen /credential_stuffing/
