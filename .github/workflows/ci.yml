@@ -55,7 +55,7 @@ jobs:
       - name: Pause and quit through the container terminal
         run: |
           (sleep 2; printf p; sleep 1; printf q; sleep 1) |
-            timeout 15 script -qec 'docker compose attach demo' /tmp/dashboard-session
+            timeout 15 script -qec 'stty rows 28 cols 100 && exec docker compose attach demo' /tmp/dashboard-session
           grep -Fq Paused /tmp/dashboard-session
       - if: always()
         run: docker compose down
